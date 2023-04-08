@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.utils.html import mark_safe
 from .models import *
-
 from django import forms
 from ckeditor_uploader.widgets import CKEditorUploadingWidget
 
@@ -36,6 +35,13 @@ class TourAdmin(admin.ModelAdmin):
     list_filter = ['name_tour', 'price_tour','amount_like', 'created_date']
     form = TourForm
 
+    readonly_fields = ['avatar']
+
+    def avatar(self, Tour):
+        if Tour:
+            return mark_safe(
+                '<img src="/static/{url}" width="40%" />'.format(url=Tour.image_tour)
+            )
 
 admin.site.register(SaleOff, SalesOffAdmin)
 admin.site.register(Tour, TourAdmin)

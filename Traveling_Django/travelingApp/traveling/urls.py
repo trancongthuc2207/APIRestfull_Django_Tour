@@ -7,6 +7,7 @@ r.register('sales-off', views.SalesOffViewSet)
 r.register('tours', views.TourViewSet)
 r.register('users', views.UserViewSet)
 r.register('tickets', views.TicketViewSet)
+r.register('bills', views.BillViewSet)
 
 urlpatterns = [
     path('', include(r.urls))

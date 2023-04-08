@@ -47,7 +47,12 @@ INSTALLED_APPS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+    ),
+    'DEFAULT_PARSER_CLASSES': (
+            'rest_framework.parsers.FormParser',
+            'rest_framework.parsers.MultiPartParser'
     )
+
 }
 
 CKEDITOR_UPLOAD_PATH = "traveling/static/ckeditor/"
@@ -112,6 +117,9 @@ CACHES = {
         "KEY_PREFIX": "Traveling"
     }
 }
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators

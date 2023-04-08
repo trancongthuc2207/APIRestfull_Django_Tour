@@ -35,14 +35,14 @@ class SaleOff(BaseModel):
 class Tour(BaseModel):
     name_tour = models.CharField(max_length=255, unique=True)
     description_tour = RichTextField()
-    price_tour = models.DecimalField(null=True, default=0, max_digits=10, decimal_places=2)
+    price_tour = models.DecimalField(null=True, max_digits=10, decimal_places=2)
     date_begin_tour = models.DateTimeField(null=True)
     image_tour = models.ImageField(upload_to='travel/tour/%Y/%m', null=True)
-    amount_people_tour = models.IntegerField(null=True)
+    amount_people_tour = models.IntegerField(null=True, default=1)
     remain_people = models.IntegerField(null=True)
     address_tour = models.CharField(max_length=255, null=True)
-    amount_popular_tour = models.IntegerField(null=True)
-    amount_like = models.IntegerField(null=True)
+    amount_popular_tour = models.IntegerField(default=1,  null=True)
+    amount_like = models.IntegerField(default=1)
     status_tour = models.CharField(max_length=25, null=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
@@ -77,7 +77,7 @@ class Ticket(BaseModel):
     totals_minus_money = models.DecimalField(null=True, default=0, max_digits=10, decimal_places=2)
     amount_ticket = models.SmallIntegerField(default=1)
     status_ticket = models.CharField(max_length=25)
-    bill = models.ForeignKey(Bill, on_delete=models.SET_NULL, null=True)
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return self.status_ticket
@@ -110,3 +110,10 @@ class WishList(BaseModel):
 
     def __str__(self):
         return self.is_like
+
+class TourImages(BaseModel):
+    tour = models.ForeignKey(Tour, on_delete=models.SET_NULL, null=True)
+    image_tour = models.ImageField(upload_to='travel/tour/%Y/%m', null=True)
+
+    def __str__(self):
+        return self.tour
