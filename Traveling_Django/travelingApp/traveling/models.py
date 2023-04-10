@@ -64,6 +64,8 @@ class Bill(BaseModel):
     code_bill = models.CharField(max_length=25, null=True, unique=True, db_index=True)
     totals_bill = models.DecimalField(null=True, default=0, max_digits=10, decimal_places=2)
     status_bill = models.CharField(max_length=25)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    method_pay = models.CharField(max_length=50, null=True)
 
     def __str__(self):
         return self.code_bill

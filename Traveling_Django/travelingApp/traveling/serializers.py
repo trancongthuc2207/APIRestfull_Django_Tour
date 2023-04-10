@@ -37,6 +37,10 @@ class TourDetailSerializer(TourBaseShow):
 
 ######## USER
 class UserSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
+
+    def get_avatar(self, User):
+        return baseUrl + str(User.avatar)
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -140,6 +144,60 @@ class TourImagesSerializer(serializers.ModelSerializer):
     class Meta:
         model = TourImages
         fields = ['image_tour', 'active']
+
+
+class WishListSerializer(serializers.ModelSerializer):
+    tour = serializers.SerializerMethodField()
+
+    def get_tour(self, WishList):
+        return {
+            'id': WishList.tour.id,
+            'name_tour': WishList.tour.name_tour,
+            'image_tour': baseUrl + str(WishList.tour.image_tour),
+            'price_tour': WishList.tour.price_tour,
+        }
+
+    class Meta:
+        model = WishList
+        fields = ['tour', 'is_like', 'active']
+
+
+class RatingVoteSerializer(serializers.ModelSerializer):
+    tour = serializers.SerializerMethodField()
+
+    def get_tour(self, WishList):
+        return {
+            'id': WishList.tour.id,
+            'name_tour': WishList.tour.name_tour,
+            'image_tour': baseUrl + str(WishList.tour.image_tour),
+            'price_tour': WishList.tour.price_tour,
+        }
+
+    class Meta:
+        model = RatingVote
+        fields = ['tour', 'amount_star_voting', 'active']
+
+
+class CommentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'tour', 'content_cmt', 'amount_like_cmt', 'status_cmt', 'active']
+
+class CommentShowSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+
+    def get_user(self, Comment):
+        return {
+            "id": Comment.user.id,
+            "first_name": Comment.user.first_name,
+            "last_name": Comment.user.last_name,
+            "avatar": baseUrl + str(Comment.user.avatar)
+        }
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'user', 'content_cmt', 'amount_like_cmt', 'status_cmt', 'created_date']
 
 class ImageSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField(source='image')

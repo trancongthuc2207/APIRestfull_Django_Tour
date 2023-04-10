@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
-
+from urllib.parse import urlparse
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -109,14 +109,18 @@ CACHE_TTL = 60 * 1500
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
+        "LOCATION": "redis://default:8pmIeJdffahS6RCMtsngUidnwgTmfxwW@redis-10229.c292.ap-southeast-1-1.ec2.cloud.redislabs.com:10229",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
+            "PASSWORD": "8pmIeJdffahS6RCMtsngUidnwgTmfxwW",
         },
         "KEY_PREFIX": "Traveling"
     }
 }
+
+# redis-10229.c292.ap-southeast-1-1.ec2.cloud.redislabs.com
+# redis://127.0.0.1:6379/1
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
