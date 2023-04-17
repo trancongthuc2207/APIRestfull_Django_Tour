@@ -13,6 +13,11 @@ from .perms import *
 from .condition import *
 from urllib.parse import urlparse
 
+from django.core.mail import send_mail
+from django.conf import settings
+
+from .test_Momo import set_paramater_url
+
 baseCache = "Traveling:1:"
 # + id Tour
 nameKey_Tour_Redis = "local_details_tour_"
@@ -28,6 +33,8 @@ def GernerateCodeBill():
 
     return code
 
+def convert_currency(f):
+    return "{:0,.2f}".format(float(f))
 
 #### SALES OFF
 class SalesOffViewSet(viewsets.ViewSet, generics.ListAPIView):
@@ -102,6 +109,7 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
                     data['list_comment'] = CommentShowSerializer(Comment.objects.filter(tour_id=c.id), many=True).data
 
                 cache.set(nameKey_Tour_Redis + pk, str(data), 300)
+
                 return Response(data)
             except:
                 return Response('Have a problem')
@@ -114,6 +122,33 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
             if l_cmt > 0:
                 data = CommentShowSerializer(Comment.objects.filter(tour_id=c.id), many=True).data
             return Response(data)
+
+
+    @action(methods=['post'], detail=False, url_path='create-10-tour')
+    def create_10_tour(self, request):
+        if CanCRUD_Tour.has_permission(self, request, request.user):
+            try:
+                for i in range(10):
+                    tour = Tour(**TourSerializer(request.data).data)
+                    tour.name_tour += " V" + str(i)
+                    tour.image_tour = request.data['image_tour']
+                    tour.remain_people = tour.amount_people_tour
+                    tour.user = request.user
+                    tour.status_tour = "Run"
+                    tour.save()
+                    # Save List Image
+                    if len(request.FILES) > 1:
+                        num = 0
+                        for img in request.FILES.values():
+                            if num > 0:
+                                images_tour = TourImages(tour=tour, image_tour=img)
+                                images_tour.save()
+                            num += 1
+
+                return Response(TourBaseShow(tour).data)
+            except:
+                return Response("Data have a problem")
+        return Response("You can't add this tour")
 
     ####### POST Create New
     @action(methods=['post'], detail=False, url_path='create-tour')
@@ -133,13 +168,13 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
                         if num > 0:
                             images_tour = TourImages(tour=tour, image_tour=img)
                             images_tour.save()
-                            print(images_tour.image_tour)
                         num += 1
 
                 return Response(TourBaseShow(tour).data)
             except:
                 return Response("Data have a problem")
         return Response("You can't add this tour")
+
 
     @action(methods=['put'], detail=True, url_path='update-tour')
     def update_tour(self, request, pk):
@@ -261,16 +296,31 @@ class TicketViewSet(viewsets.ViewSet, generics.ListAPIView):
                         ticket.totals_minus_money = 0
                     ticket.status_ticket = "Pending"
 
-                    ## TOTALS BILL
+                    # TOTALS BILL
                     bill.totals_bill = ticket.price_real - ticket.totals_minus_money
                     ticket.bill = bill
 
+                    message_email = "====== Tên Tour: {}\n- Giá Tour: {}\n- Giá đơn vé: {}/{}\n- Giảm giá: {}\n- Số vé: {}\n- Mã Bill: {}\n- Tổng tiền vé: {}\n- Đến Trang Thanh Toán: {}".\
+                        format(tour_da.name_tour,convert_currency(tour_da.price_tour),convert_currency(type_people_da.price_booked),type_people_da.name_type_customer,convert_currency(ticket.totals_minus_money),
+                               ticket.amount_ticket,bill.code_bill,convert_currency(bill.totals_bill),
+                               set_paramater_url(bill.code_bill,bill.totals_bill,request.user.username,
+                                                 "https://thuctran2207.pythonanywhere.com/",
+                                                 "https://thuctran2207.pythonanywhere.com/",
+                                                 "Thanh toan hoa don dat ve Tour"))
                     try:
                         bill.save()
                         ticket.save()
                         data = TicketSerializer(ticket).data
                         data['total-discount'] = ticket.totals_minus_money
                         data['bill-code'] = bill.code_bill
+
+                        if request.user.email is not None:
+                            list_mail = []
+                            list_mail.append(request.user.email)
+                            send_mail(subject="Đặt vé Tour Thành Công, VUI LÒNG QUÝ KHÁCH THANH TOÁN !!",
+                                      message=message_email,
+                                      from_email=settings.EMAIL_HOST_USER, recipient_list=list_mail,
+                                      fail_silently=False)
                         return Response(data, status=status.HTTP_201_CREATED)
                     except:
                         return Response("Some Thing Erro When Booking Ticket")
@@ -364,7 +414,8 @@ class BillViewSet(viewsets.ViewSet, generics.ListAPIView):
         bill.status_bill = request.data['status_bill']
         bill.method_pay = request.data['method_pay']
         ticket = Ticket.objects.get(bill=bill)
-        if request.data['status_bill'] == "Cancel":
+
+        if request.data['status_bill'] == "Cancel" or ticket.tour.remain_people == 0:
             bill.active = 0
             bill.save()
             ticket.active = 0
@@ -376,7 +427,7 @@ class BillViewSet(viewsets.ViewSet, generics.ListAPIView):
         ticket.status_ticket = request.data['status_bill']
 
         tour = Tour.objects.get(id=ticket.tour.id)
-        tour.remain_people -= 1
+        tour.remain_people -= ticket.amount_ticket
         tour.save()
 
         return Response(BillSerializer(bill).data)
@@ -482,6 +533,18 @@ class CommentViewSet(viewsets.ViewSet, generics.ListAPIView):
         except:
             return Response("Error Comment Comment")
 
+    @action(methods=['post'], detail=True, url_path='add-5-comment-tour')
+    def add_user_comment(self, request, pk):
+        try:
+            for i in range(5):
+                content = request.data['content_cmt'] + str(i) + " !!!!"
+                add_comment = Comment(tour=Tour.objects.get(id=pk), user=request.user, content_cmt=content,
+                                      amount_like_cmt=0, status_cmt="Run")
+                add_comment.save()
+            return Response(CommentSerializer(add_comment).data)
+        except:
+            return Response("Error Comment Comment")
+
     @action(methods=['delete'], detail=True, url_path='delete-comment-tour')
     def delete_user_comment(self, request, pk):
         try:
@@ -506,3 +569,43 @@ class CommentViewSet(viewsets.ViewSet, generics.ListAPIView):
             return Response(data)
         except:
             return Response("Error Update Comment")
+
+
+####### Tour-Images:
+class TourImagesViewSet(viewsets.ViewSet, generics.ListAPIView):
+    queryset = TourImages.objects.all()
+    serializer_class = TourImagesSerializer
+    pagination_class = TourPaginator
+
+    @action(methods=['put'], detail=True, url_path='update-per-image-tour')
+    def update_per_image_tour(self, request, pk):
+        if CanCRUD_Tour.has_permission(self, request, request.user) == False:
+            return Response("You don't have permission", status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        else:
+            try:
+                tour_root = TourImages.objects.get(id=pk)
+
+                if "image_tour" in request.data:
+                    tour_root.image_tour = request.data["image_tour"]
+
+                tour_root.save()
+
+                # Update Cache
+                if cache.get(nameKey_Tour_Redis + str(pk)):
+                    data = TourDetailSerializer(tour_root).data
+                    t = len(TourImages.objects.filter(tour_id=pk))
+                    if t > 0:
+                        data['list_images'] = TourImagesSerializer(TourImages.objects.filter(tour_id=pk),
+                                                                   many=True).data
+                        data['isUpdate'] = True
+
+                    l_cmt = len(Comment.objects.filter(tour_id=pk))
+                    if l_cmt > 0:
+                        data['list_comment'] = CommentShowSerializer(Comment.objects.filter(tour_id=pk),
+                                                                     many=True).data
+                    cache.set(nameKey_Tour_Redis + pk, str(data), 300)
+                # Response
+                data = TourImagesSerializer(tour_root).data
+                return Response(data)
+            except:
+                return Response("Lỗi cập nhật", status=status.HTTP_204_NO_CONTENT)

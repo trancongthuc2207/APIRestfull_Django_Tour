@@ -44,6 +44,7 @@ class Tour(BaseModel):
     amount_popular_tour = models.IntegerField(default=1,  null=True)
     amount_like = models.IntegerField(default=1)
     status_tour = models.CharField(max_length=25, null=True)
+    country_tour = models.CharField(max_length=255, null=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):

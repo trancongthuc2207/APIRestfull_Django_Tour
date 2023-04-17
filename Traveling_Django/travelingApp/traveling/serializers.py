@@ -15,7 +15,7 @@ class TourSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tour
         fields = ['name_tour', 'description_tour', 'image_tour', 'price_tour', 'amount_people_tour', 'remain_people',
-                  'address_tour', 'amount_like']
+                  'address_tour', 'amount_like', 'country_tour']
 
 
 class TourBaseShow(serializers.ModelSerializer):
@@ -27,7 +27,7 @@ class TourBaseShow(serializers.ModelSerializer):
     class Meta:
         model = Tour
         fields = ['id', 'name_tour', 'description_tour', 'image_tour', 'price_tour', 'amount_people_tour', 'remain_people',
-                  'address_tour', 'amount_like']
+                  'address_tour', 'amount_like', 'country_tour']
 
 class TourDetailSerializer(TourBaseShow):
 
@@ -143,7 +143,7 @@ class TourImagesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TourImages
-        fields = ['image_tour', 'active']
+        fields = ['id', 'image_tour', 'active']
 
 
 class WishListSerializer(serializers.ModelSerializer):
