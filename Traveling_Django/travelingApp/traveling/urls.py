@@ -12,6 +12,9 @@ r.register('wishlist', views.WishListViewSet)
 r.register('rating', views.RatingVoteViewSet)
 r.register('comments', views.CommentViewSet)
 r.register('tour-images', views.TourImagesViewSet)
+r.register('blogs', views.BlogViewSet)
+r.register('comments-blog', views.CommentBlogViewSet)
+r.register('likes-blog', views.LikeBlogViewSet)
 
 urlpatterns = [
     path('', include(r.urls))

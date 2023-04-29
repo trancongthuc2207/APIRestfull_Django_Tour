@@ -21,7 +21,7 @@ from .test_Momo import set_paramater_url
 baseCache = "Traveling:1:"
 # + id Tour
 nameKey_Tour_Redis = "local_details_tour_"
-
+nameKey_Blog_Redis = "local_details_blog"
 
 def GernerateCodeBill():
     code = datetime.now().strftime("D%m%d%Y-")
@@ -36,6 +36,34 @@ def GernerateCodeBill():
 def convert_currency(f):
     return "{:0,.2f}".format(float(f))
 
+def update_cache_details_tour(pk):
+    c = Tour.objects.get(pk=pk)
+    data = TourDetailSerializer(c).data
+    t = len(TourImages.objects.filter(tour_id=c.id))
+    if t > 0:
+        data['list_images'] = TourImagesSerializer(TourImages.objects.filter(tour_id=c.id), many=True).data
+
+    rating_vote = {}
+    for star in range(1, 6):
+        rating_vote["Star " + str(star)] = len(RatingVote.objects.filter(amount_star_voting=star, tour=c))
+    data['num_rating'] = rating_vote
+
+    l_cmt = len(Comment.objects.filter(tour_id=c.id))
+    if l_cmt > 0:
+        data['list_comment'] = CommentShowSerializer(Comment.objects.filter(tour_id=c.id), many=True).data
+
+    return cache.set(nameKey_Tour_Redis + pk, str(data), 300)
+
+def update_cache_details_blog(pk):
+    c = Blog.objects.get(pk=pk)
+    data = BlogDetailsSerializer(c).data
+
+    l_cmt = len(CommentBlog.objects.filter(blog_id=c.id))
+    if l_cmt > 0:
+        data['list_comment'] = CommentShowSerializer(CommentBlog.objects.filter(blog_id=c.id), many=True).data
+
+    return cache.set(nameKey_Blog_Redis + pk, str(data), 300)
+
 #### SALES OFF
 class SalesOffViewSet(viewsets.ViewSet, generics.ListAPIView):
     queryset = SaleOff.objects.all()
@@ -48,7 +76,7 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
     serializer_class = TourBaseShow
     pagination_class = TourPaginator
     parser_classes = [parsers.MultiPartParser, ]
-    queryset = Tour.objects.filter(active=True)
+    queryset = Tour.objects.filter(active=True).order_by('-amount_popular_tour')
 
     # PERMISSION
     def get_permissions(self):
@@ -83,9 +111,7 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
         name_address = self.request.query_params.get('address')
         if name_address:
             queryset = queryset.filter(address_tour__icontains=name_address)
-
         print(self.request.query_params.get('message'))
-
         return queryset
 
     @action(methods=['get'], detail=True, url_path='details-tour')
@@ -103,6 +129,10 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
                 if t > 0:
                     data['list_images'] = TourImagesSerializer(TourImages.objects.filter(tour_id=c.id), many=True).data
 
+                rating_vote = {}
+                for star in range(1,6):
+                    rating_vote["Star " + str(star)] = len(RatingVote.objects.filter(amount_star_voting=star, tour=c))
+                data['num_rating'] = rating_vote
 
                 l_cmt = len(Comment.objects.filter(tour_id=c.id))
                 if l_cmt > 0:
@@ -205,18 +235,7 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
 
                 # Update Cache
                 if cache.get(nameKey_Tour_Redis + str(pk)):
-                    data = TourDetailSerializer(tour_root).data
-                    t = len(TourImages.objects.filter(tour_id=pk))
-                    if t > 0:
-                        data['list_images'] = TourImagesSerializer(TourImages.objects.filter(tour_id=pk),
-                                                                   many=True).data
-                        data['isUpdate'] = True
-
-                    l_cmt = len(Comment.objects.filter(tour_id=pk))
-                    if l_cmt > 0:
-                        data['list_comment'] = CommentShowSerializer(Comment.objects.filter(tour_id=pk),
-                                                                     many=True).data
-                    cache.set(nameKey_Tour_Redis + pk, str(data), 300)
+                    update_cache_details_tour(pk)
                 # Response
                 data = TourDetailSerializer(tour_root).data
                 t = len(TourImages.objects.filter(tour_id=tour_root.id))
@@ -295,7 +314,8 @@ class TicketViewSet(viewsets.ViewSet, generics.ListAPIView):
                     else:
                         ticket.totals_minus_money = 0
                     ticket.status_ticket = "Pending"
-
+                    ticket.user = request.user
+                    bill.user = request.user
                     # TOTALS BILL
                     bill.totals_bill = ticket.price_real - ticket.totals_minus_money
                     ticket.bill = bill
@@ -316,6 +336,11 @@ class TicketViewSet(viewsets.ViewSet, generics.ListAPIView):
 
                         if request.user.email is not None:
                             list_mail = []
+                            data['mail-result'] = "Đặt vé thành công, bạn có thể kiểm tra trong hộp thư Email."
+                            data['payUrl'] =  set_paramater_url(bill.code_bill,bill.totals_bill,request.user.username,
+                                                 "https://thuctran2207.pythonanywhere.com/",
+                                                 "https://thuctran2207.pythonanywhere.com/",
+                                                 "Thanh toan hoa don dat ve Tour")
                             list_mail.append(request.user.email)
                             send_mail(subject="Đặt vé Tour Thành Công, VUI LÒNG QUÝ KHÁCH THANH TOÁN !!",
                                       message=message_email,
@@ -429,7 +454,7 @@ class BillViewSet(viewsets.ViewSet, generics.ListAPIView):
         tour = Tour.objects.get(id=ticket.tour.id)
         tour.remain_people -= ticket.amount_ticket
         tour.save()
-
+        ticket.save()
         return Response(BillSerializer(bill).data)
 
 
@@ -501,11 +526,44 @@ class RatingVoteViewSet(viewsets.ViewSet, generics.ListAPIView):
                 oldrate = RatingVote.objects.get(tour=Tour.objects.get(id=pk),user=request.user)
                 oldrate.amount_star_voting = star
                 oldrate.save()
+                ## RE UPDATE COUNT RATING VOTE
+                num_people = 0
+                totals_rate = 0
+                for star in range(1, 6):
+                    num = len(RatingVote.objects.filter(amount_star_voting=star, tour=Tour.objects.get(id=pk)))
+                    totals_rate += num * star
+                    num_people += num
+
+                tour = Tour.objects.get(pk=pk)
+                tour.rating_count_tour = totals_rate / num_people
+                tour.save()
+
+                # Update Cache
+                if cache.get(nameKey_Tour_Redis + str(pk)):
+                    update_cache_details_tour(pk)
+
                 return Response(RatingVoteSerializer(oldrate).data)
             else:
                 newrate = RatingVote(tour=Tour.objects.get(id=pk),user=request.user)
                 newrate.amount_star_voting = star
                 newrate.save()
+
+                ## RE UPDATE COUNT RATING VOTE
+                num_people = 0
+                totals_rate = 0
+                for star in range(1, 6):
+                    num = len(RatingVote.objects.filter(amount_star_voting=star, tour=Tour.objects.get(id=pk)))
+                    totals_rate += num * star
+                    num_people += num
+
+                tour = Tour.objects.get(pk=pk)
+                tour.rating_count_tour = totals_rate / num_people
+                tour.save()
+
+                # Update Cache
+                if cache.get(nameKey_Tour_Redis + str(pk)):
+                    update_cache_details_tour(pk)
+
                 return Response(RatingVoteSerializer(newrate).data)
         except:
             return Response("Error Rating Tour")
@@ -592,20 +650,269 @@ class TourImagesViewSet(viewsets.ViewSet, generics.ListAPIView):
 
                 # Update Cache
                 if cache.get(nameKey_Tour_Redis + str(pk)):
-                    data = TourDetailSerializer(tour_root).data
-                    t = len(TourImages.objects.filter(tour_id=pk))
-                    if t > 0:
-                        data['list_images'] = TourImagesSerializer(TourImages.objects.filter(tour_id=pk),
-                                                                   many=True).data
-                        data['isUpdate'] = True
-
-                    l_cmt = len(Comment.objects.filter(tour_id=pk))
-                    if l_cmt > 0:
-                        data['list_comment'] = CommentShowSerializer(Comment.objects.filter(tour_id=pk),
-                                                                     many=True).data
-                    cache.set(nameKey_Tour_Redis + pk, str(data), 300)
+                    update_cache_details_tour(pk)
                 # Response
                 data = TourImagesSerializer(tour_root).data
                 return Response(data)
             except:
                 return Response("Lỗi cập nhật", status=status.HTTP_204_NO_CONTENT)
+
+
+###### BLOG
+class BlogViewSet(viewsets.ViewSet, generics.ListAPIView):
+    # queryset = Tour.objects.filter(active=True)
+    serializer_class = BlogSerializer
+    pagination_class = TourPaginator
+    parser_classes = [parsers.MultiPartParser, ]
+    queryset = Blog.objects.filter(active=True).order_by('-count_like_blog')
+
+    # PERMISSION
+    # def get_permissions(self):
+    #     if self.action in ['create_tour']:
+    #         return [CanCRUD_Tour()]
+    #
+    #     return [permissions.AllowAny()]
+
+    ######## GET
+    def filter_queryset(self, queryset):
+        #########
+        q = self.request.query_params.get("q")
+        if q:
+            queryset = queryset.filter(title_blog__icontains=q, content_blog__icontains=q)
+
+        blog_id = self.request.query_params.get('blog_id')
+        #########
+        if blog_id:
+            queryset = queryset.filter(id=blog_id)
+
+        ###########
+        name_address = self.request.query_params.get('address')
+        if name_address:
+            queryset = queryset.filter(address_blog__icontains=name_address)
+        print(self.request.query_params.get('message'))
+        return queryset
+
+    @action(methods=['get'], detail=True, url_path='details-blog')
+    def details_blog(self, request, pk):
+        if cache.get(nameKey_Blog_Redis + str(pk)):
+            data_details = cache.get(nameKey_Blog_Redis + str(pk))
+
+            return Response(data_details)
+        else:
+            try:
+                c = self.get_object()
+                data = BlogDetailsSerializer(c).data
+
+                l_cmt = len(CommentBlog.objects.filter(blog_id=c.id))
+                if l_cmt > 0:
+                    data['list_comment'] = CommentShowSerializer(CommentBlog.objects.filter(blog_id=c.id), many=True).data
+
+                cache.set(nameKey_Blog_Redis + pk, str(data), 300)
+
+                return Response(data)
+            except:
+                return Response('Have a problem')
+
+    @action(methods=['get'], detail=True, url_path='comments')
+    def get_comments_blog(self, request, pk):
+            c = self.get_object()
+            l_cmt = len(CommentBlog.objects.filter(blog_id=c.id))
+            data = []
+            if l_cmt > 0:
+                data = CommentBlogShowSerializer(CommentBlog.objects.filter(blog_id=c.id), many=True).data
+            return Response(data)
+
+    #
+    @action(methods=['post'], detail=False, url_path='create-10-blog')
+    def create_10_blog(self, request):
+        if CanCRUD_Tour.has_permission(self, request, request.user):
+            try:
+                for i in range(10):
+                    blog = Blog(**BlogSerializer(request.data).data)
+                    blog.title_blog += " _V" + str(i)
+                    blog.image_blog = request.data['image_blog']
+                    blog.address_blog = request.data['address_blog']
+                    blog.country_blog = request.data['country_blog']
+
+                    if len(request.FILES) == 2:
+                        blog.image_content1_blog = request.data['image_content1_blog']
+                    if len(request.FILES) == 3:
+                        blog.image_content1_blog = request.data['image_content1_blog']
+                        blog.image_content2_blog = request.data['image_content2_blog']
+
+                    blog.user = request.user
+                    blog.save()
+
+                return Response(BlogBaseShow(blog).data)
+            except:
+                return Response("Data have a problem")
+        return Response("You can't add this tour")
+
+    ####### POST Create New
+    @action(methods=['post'], detail=False, url_path='create-blog')
+    def create_blog(self, request):
+        if CanCRUD_Tour.has_permission(self, request, request.user):
+            try:
+                blog = Blog(**BlogSerializer(request.data).data)
+
+                blog.image_blog = request.data['image_blog']
+                blog.address_blog = request.data['address_blog']
+                blog.country_blog = request.data['country_blog']
+
+                if len(request.FILES) == 2:
+                    blog.image_content1_blog = request.data['image_content1_blog']
+                if len(request.FILES) == 3:
+                    blog.image_content1_blog = request.data['image_content1_blog']
+                    blog.image_content2_blog = request.data['image_content2_blog']
+
+                blog.user = request.user
+                blog.save()
+
+                return Response(BlogDetailsSerializer(blog).data)
+            except:
+                return Response("Data have a problem")
+        return Response("You can't add this tour")
+
+
+    @action(methods=['put'], detail=True, url_path='update-blog')
+    def update_tour(self, request, pk):
+        if CanCRUD_Tour.has_permission(self, request, request.user) == False:
+            return Response("You don't have permission", status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        else:
+            try:
+                blog_root = Blog.objects.get(id=pk)
+
+                for key, value in request.data.items():
+                    if "uploadedfile.InMemoryUploadedFile" in str(type(value)):
+                        continue
+                    setattr(blog_root, key, value)
+
+                if "image_blog" in request.data:
+                    blog_root.image_tour = request.data["image_tour"]
+
+                if "image_content1_blog" in request.data:
+                    blog_root.image_content1_blog = request.data["image_content1_blog"]
+
+                if "image_content2_blog" in request.data:
+                    blog_root.image_content2_blog = request.data["image_content2_blog"]
+
+                blog_root.save()
+
+                # Update Cache
+                if cache.get(nameKey_Blog_Redis + str(pk)):
+                    update_cache_details_blog(pk)
+                # Response
+                data = BlogDetailsSerializer(blog_root).data
+
+                return Response(data)
+            except:
+                return Response("Lỗi cập nhật", status=status.HTTP_204_NO_CONTENT)
+
+
+####### Comment Blog:
+class CommentBlogViewSet(viewsets.ViewSet, generics.ListAPIView):
+    queryset = CommentBlog.objects.all()
+    serializer_class = CommentBlogSerializer
+    pagination_class = CommentPaginator
+
+    def get_permissions(self):
+        if self.action in ['add_user_comment_blog']:
+            return [permissions.IsAuthenticated()]
+
+        return [permissions.AllowAny()]
+
+    @action(methods=['post'], detail=True, url_path='add-comment-blog')
+    def add_user_comment_blog(self, request, pk):
+        try:
+            content = request.data['content_cmt']
+            add_comment = CommentBlog(blog=Blog.objects.get(id=pk),user=request.user,content_cmt=content,amount_like_cmt=0,status_cmt="Run")
+            add_comment.save()
+            return Response(CommentBlogSerializer(add_comment).data)
+        except:
+            return Response("Error Comment Comment")
+
+    @action(methods=['post'], detail=True, url_path='add-5-comment-blog')
+    def add_user_comment(self, request, pk):
+        try:
+            for i in range(5):
+                content = request.data['content_cmt'] + str(i) + " !!!!"
+                add_comment = CommentBlog(blog=Blog.objects.get(id=pk),user=request.user,content_cmt=content,amount_like_cmt=0,status_cmt="Run")
+                add_comment.save()
+            return Response(CommentBlogSerializer(add_comment).data)
+        except:
+            return Response("Error Comment Comment")
+
+    @action(methods=['delete'], detail=True, url_path='delete-comment-blog')
+    def delete_user_comment(self, request, pk):
+        try:
+            cmt = CommentBlog.objects.get(id=pk)
+            if CommentOwnerUser.has_permission(self,request,cmt) == False:
+                return Response("You cant have permission!!!")
+            cmt.delete()
+            return Response("Delete Successfully!!!")
+        except:
+            return Response("Error Delete Comment")
+
+    @action(methods=['patch'], detail=True, url_path='edit-comment-blog')
+    def edit_user_comment(self, request, pk):
+        try:
+            cmt = CommentBlog.objects.get(id=pk)
+            if CommentOwnerUser.has_permission(self,request,cmt) == False:
+                return Response("You cant have permission!!!")
+            cmt.content_cmt = request.data['content_cmt']
+            cmt.save()
+            data = CommentBlogSerializer(cmt).data
+            data["status_update"] = "Update Successfully!!!"
+            return Response(data)
+        except:
+            return Response("Error Update Comment")
+
+
+####### Like Blog
+class LikeBlogViewSet(viewsets.ViewSet, generics.ListAPIView):
+    queryset = LikeBlog.objects.all()
+    serializer_class = LikeBlogSerializer
+    pagination_class = WishListPaginator
+
+    def get_permissions(self):
+        if self.action in ['get_user_like_blog', 'add_user_like_blog']:
+            return [permissions.IsAuthenticated()]
+
+        return [permissions.AllowAny()]
+
+    @action(methods=['get'], detail=False, url_path='my-like-blog')
+    def get_user_like_blog(self, request):
+        queryset = LikeBlog.objects.all()
+        queryset = queryset.filter(user=request.user, is_like=1)
+
+        return Response(LikeBlogSerializer(queryset, many=True).data)
+
+    @action(methods=['post'], detail=True, url_path='add-like-blog')
+    def add_user_like_blog(self, request, pk):
+        try:
+            wish = LikeBlog.objects.filter(blog=Blog.objects.get(id=pk),user=request.user)
+            blog = Blog.objects.get(id=pk)
+            if len(wish) > 0:
+                oldwish = LikeBlog.objects.get(blog=Blog.objects.get(id=pk),user=request.user)
+                if oldwish.is_like == 0:
+                    oldwish.is_like = 1
+
+                    blog.count_like_blog += 1
+                    blog.save()
+                else:
+                    oldwish.is_like = 0
+
+                    blog.count_like_blog -= 1
+                    blog.save()
+                oldwish.save()
+                return Response(LikeBlogSerializer(oldwish).data)
+            else:
+                newwish = LikeBlog(blog=Blog.objects.get(id=pk),user=request.user)
+                newwish.is_like = 1
+                newwish.save()
+
+                blog.count_like_blog += 1
+                blog.save()
+                return Response(LikeBlogSerializer(newwish).data)
+        except:
+            return Response("Error Add Like Blog List")

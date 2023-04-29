@@ -45,6 +45,7 @@ class Tour(BaseModel):
     amount_like = models.IntegerField(default=1)
     status_tour = models.CharField(max_length=25, null=True)
     country_tour = models.CharField(max_length=255, null=True)
+    rating_count_tour = models.DecimalField(null=True, max_digits=10, decimal_places=2, default=5)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
@@ -103,7 +104,7 @@ class RatingVote(BaseModel):
     amount_star_voting = models.DecimalField(null=True, default=0, max_digits=10, decimal_places=2)
 
     def __str__(self):
-        return self.amount_star_voting
+        return str(self.amount_star_voting)
 
 
 class WishList(BaseModel):
@@ -112,11 +113,48 @@ class WishList(BaseModel):
     is_like = models.BooleanField()
 
     def __str__(self):
-        return self.is_like
+        return str(self.is_like)
+
 
 class TourImages(BaseModel):
     tour = models.ForeignKey(Tour, on_delete=models.SET_NULL, null=True)
     image_tour = models.ImageField(upload_to='travel/tour/%Y/%m', null=True)
 
     def __str__(self):
-        return self.tour
+        return str(self.image_tour)
+
+
+class Blog(BaseModel):
+    kw_blog = models.CharField(max_length=25, db_index=True)
+    title_blog = models.CharField(max_length=255, null=False)
+    content_blog = RichTextField()
+    image_blog = models.ImageField(upload_to='blog/%Y/%m', null=True)
+    image_content1_blog = models.ImageField(upload_to='blog/%Y/%m', null=True)
+    image_content2_blog = models.ImageField(upload_to='blog/%Y/%m', null=True)
+    address_blog = models.CharField(max_length=255, null=True)
+    country_blog = models.CharField(max_length=255, null=True)
+    count_like_blog = models.IntegerField(default=0)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return self.kw_blog
+
+
+class CommentBlog(BaseModel):
+    blog = models.ForeignKey(Blog, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    content_cmt = RichTextField()
+    amount_like_cmt = models.IntegerField(null=True)
+    status_cmt = models.CharField(max_length=25)
+
+    def __str__(self):
+        return self.content_cmt
+
+
+class LikeBlog(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    blog = models.ForeignKey(Blog, on_delete=models.SET_NULL, null=True)
+    is_like = models.BooleanField()
+
+    def __str__(self):
+        return str(self.is_like)
