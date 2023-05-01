@@ -9,3 +9,15 @@ def check_can_book_ticket(id_user, id_tour, type_people):
         if ticket['type_people']['name_type_customer'] == type_people.name_type_customer:
             return False
     return True
+
+
+def check_can_cmt_rate_tour(id_user, id_tour):
+    amount = len(Ticket.objects.filter(tour=id_tour,user=id_user))
+    if amount == 0:
+        return False
+    return True
+
+def check_amount_to_book(amount_book, amount_remain_tour):
+    if amount_book > amount_remain_tour:
+        return False
+    return True

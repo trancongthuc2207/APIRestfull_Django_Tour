@@ -1,6 +1,4 @@
 import json
-import urllib.request
-import urllib
 import uuid
 import requests
 import hmac

@@ -18,6 +18,8 @@ from django.conf import settings
 
 from .test_Momo import set_paramater_url
 
+import json
+
 baseCache = "Traveling:1:"
 # + id Tour
 nameKey_Tour_Redis = "local_details_tour_"
@@ -76,7 +78,7 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
     serializer_class = TourBaseShow
     pagination_class = TourPaginator
     parser_classes = [parsers.MultiPartParser, ]
-    queryset = Tour.objects.filter(active=True).order_by('-amount_popular_tour')
+    queryset = Tour.objects.filter(active=True).order_by('-rating_count_tour')
 
     # PERMISSION
     def get_permissions(self):
@@ -120,6 +122,8 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
             data_details = cache.get(nameKey_Tour_Redis + str(pk))
             # print(json.load(data_details))
             # data_re = ast.literal_eval(data_details)
+            # print(json.loads(data_details))
+
             return Response(data_details)
         else:
             try:
@@ -255,7 +259,7 @@ class UserViewSet(viewsets.ViewSet, generics.ListAPIView, generics.CreateAPIView
     parser_classes = [parsers.MultiPartParser, ]
 
     def get_permissions(self):
-        if self.action in ['current_user', 'update', 'partial_update', 'get_full_user']:
+        if self.action in ['update', 'partial_update', 'get_full_user']:
             return [CanGetUser()]
 
         return [permissions.AllowAny()]
@@ -293,6 +297,9 @@ class TicketViewSet(viewsets.ViewSet, generics.ListAPIView):
                 bill = Bill(code_bill=GernerateCodeBill(), status_bill="Pending")
                 ##### Get Object
                 tour_da = Tour.objects.get(id=int(request.data['tour']))
+
+                if not check_amount_to_book(int(request.data['amount']), tour_da.remain_people):
+                    return Response("Your booked amounting that is bigger than tour have, only {} remain".format(tour_da.remain_people))
 
                 if tour_da.remain_people == 0:
                     return Response("Tour is exhausted people")
@@ -436,11 +443,37 @@ class BillViewSet(viewsets.ViewSet, generics.ListAPIView):
         if BillOwnerUser.has_permission(self,request,bill) == False:
             return Response("You cant have permission")
 
-        bill.status_bill = request.data['status_bill']
-        bill.method_pay = request.data['method_pay']
         ticket = Ticket.objects.get(bill=bill)
 
-        if request.data['status_bill'] == "Cancel" or ticket.tour.remain_people == 0:
+        if bill.status_bill == "Expired" or ticket.status_ticket == "Expired" or bill.active == 0 or ticket.active == 0 or bill.status_bill == "Success" or ticket.status_ticket == "Success":
+            return Response(BillSerializer(bill).data)
+
+        bill.status_bill = request.data['status_bill']
+        bill.method_pay = request.data['method_pay']
+
+        if ticket.tour.remain_people == 0:
+            bill.active = 0
+            bill.status_bill = "Expired"
+            bill.save()
+            ticket.active = 0
+            ticket.status_ticket = "Expired"
+            ticket.save()
+            list = Ticket.objects.filter(tour = ticket.tour)
+            lenTick = len(list)
+            for tick in list:
+                print(tick.id)
+                t = Ticket.objects.get(pk=tick.id)
+                t.active = 0
+                t.status_ticket = "Expired"
+                t.save()
+
+                b = Bill.objects.get(pk=tick.bill.id)
+                b.active = 0
+                b.status_bill = "Expired"
+                b.save()
+            return Response(BillSerializer(bill).data)
+
+        if request.data['status_bill'] == "Cancel":
             bill.active = 0
             bill.save()
             ticket.active = 0
@@ -519,6 +552,8 @@ class RatingVoteViewSet(viewsets.ViewSet, generics.ListAPIView):
 
     @action(methods=['post'], detail=True, url_path='add-rating-tour')
     def add_user_rating(self, request, pk):
+        if not check_can_cmt_rate_tour(request.user, Tour.objects.get(id=pk)):
+            return Response("You do not used to book this tour")
         try:
             star = float(request.data['amount_star_voting'])
             rating = RatingVote.objects.filter(tour=Tour.objects.get(id=pk),user=request.user)
@@ -583,6 +618,8 @@ class CommentViewSet(viewsets.ViewSet, generics.ListAPIView):
 
     @action(methods=['post'], detail=True, url_path='add-comment-tour')
     def add_user_comment(self, request, pk):
+        if not check_can_cmt_rate_tour(request.user, Tour.objects.get(id=pk)):
+            return Response("You do not used to book this tour")
         try:
             content = request.data['content_cmt']
             add_comment = Comment(tour=Tour.objects.get(id=pk),user=request.user,content_cmt=content,amount_like_cmt=0,status_cmt="Run")

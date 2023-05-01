@@ -5,6 +5,8 @@ from ckeditor.fields import RichTextField
 
 class User(AbstractUser):
     avatar = models.ImageField(upload_to='user/%Y/%m', null=True)
+    phone_number = models.CharField(max_length=12, null=True)
+    citizen_id = models.CharField(max_length=12, null=True)
 
 
 class BaseModel(models.Model):
