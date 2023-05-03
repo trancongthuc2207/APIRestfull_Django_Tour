@@ -67,6 +67,32 @@ class TypeCustomerSerializer(serializers.ModelSerializer):
         fields = ['name_type_customer', 'description_customer', 'price_booked', 'sales_off', 'active', 'created_date']
 
 
+class TypeCustomerBaseShow(serializers.ModelSerializer):
+    sales_off = serializers.SerializerMethodField()
+
+    def get_sales_off(self, TypeCustomer):
+        if TypeCustomer.sales_off.id == 1 or TypeCustomer.sales_off.name_sales == 'None':
+            return 'Not SaleOff'
+
+        data = {}
+        data['name_sales'] = TypeCustomer.sales_off.name_sales
+        data['description'] = TypeCustomer.sales_off.description
+
+        if TypeCustomer.sales_off.price_value_sales != 0:
+            data['price_value_sales'] = str(TypeCustomer.sales_off.price_value_sales)
+            data['the_last_price'] = str(TypeCustomer.price_booked - TypeCustomer.sales_off.price_value_sales)
+
+        if TypeCustomer.sales_off.price_percent_sales != 0:
+            data['price_percent_sales'] = str(TypeCustomer.sales_off.price_percent_sales)
+            data['the_last_price'] = str(TypeCustomer.price_booked - (TypeCustomer.price_booked * TypeCustomer.sales_off.price_percent_sales)/100)
+
+        return data
+
+    class Meta:
+        model = TypeCustomer
+        fields = ['id', 'name_type_customer', 'description_customer', 'price_booked', 'sales_off', 'active', 'created_date']
+
+
 class BillSerializer(serializers.ModelSerializer):
     ticket_of_bill = serializers.SerializerMethodField()
 

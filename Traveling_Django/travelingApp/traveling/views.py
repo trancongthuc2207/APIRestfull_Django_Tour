@@ -458,7 +458,7 @@ class BillViewSet(viewsets.ViewSet, generics.ListAPIView):
             ticket.active = 0
             ticket.status_ticket = "Expired"
             ticket.save()
-            list = Ticket.objects.filter(tour = ticket.tour)
+            list = Ticket.objects.filter(tour = ticket.tour, status_ticket = 'Pending')
             lenTick = len(list)
             for tick in list:
                 print(tick.id)
@@ -698,7 +698,7 @@ class TourImagesViewSet(viewsets.ViewSet, generics.ListAPIView):
 ###### BLOG
 class BlogViewSet(viewsets.ViewSet, generics.ListAPIView):
     # queryset = Tour.objects.filter(active=True)
-    serializer_class = BlogSerializer
+    serializer_class = BlogBaseShow
     pagination_class = TourPaginator
     parser_classes = [parsers.MultiPartParser, ]
     queryset = Blog.objects.filter(active=True).order_by('-count_like_blog')
@@ -953,3 +953,10 @@ class LikeBlogViewSet(viewsets.ViewSet, generics.ListAPIView):
                 return Response(LikeBlogSerializer(newwish).data)
         except:
             return Response("Error Add Like Blog List")
+
+
+####### Type Customer:
+class TypeCustomerViewSet(viewsets.ViewSet, generics.ListAPIView):
+    queryset = TypeCustomer.objects.filter(active=True)
+    serializer_class = TypeCustomerBaseShow
+    pagination_class = TicketPaginator

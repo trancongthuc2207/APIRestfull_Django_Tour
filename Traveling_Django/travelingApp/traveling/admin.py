@@ -6,43 +6,112 @@ from ckeditor_uploader.widgets import CKEditorUploadingWidget
 from django.utils.html import format_html
 from .paginators import *
 
+
 def convert_currency(f):
     return "{:0,.2f}".format(float(f))
 
+
 ###### FORM CKEDITOR
 class SalesOffForm(forms.ModelForm):
-    description = forms.CharField(widget=CKEditorUploadingWidget)
+    description = forms.CharField(widget=forms.Textarea)
 
     class Meta:
         model = SaleOff
         fields = '__all__'
 
+
 class TourForm(forms.ModelForm):
-    description_tour = forms.CharField(widget=CKEditorUploadingWidget)
+    description_tour = forms.CharField(widget=forms.Textarea(attrs={'cols': 750, 'rows': 25}))
 
     class Meta:
         model = Tour
         fields = '__all__'
 
+
+class TypeCustomerForm(forms.ModelForm):
+    description_customer = forms.CharField(widget=forms.Textarea)
+
+    class Meta:
+        model = TypeCustomer
+        fields = '__all__'
+
+
+class TypeCustomerAdmin(admin.ModelAdmin):
+    form = TypeCustomerForm
+
+
+##### ------------ REGISTER:::: BLOG
+class CommentBlogShowReadInlindAdmin(admin.TabularInline):
+    model = CommentBlog
+    fields = ['get_image_user', 'get_user', 'custom_content_cmt']
+    readonly_fields = ['get_image_user', 'get_user', 'custom_content_cmt']
+    max_num = 1
+
+    def get_image_user(self, CommentBlog):
+
+        if str(CommentBlog.user.avatar) == '':
+            return mark_safe(
+                '<a href="/admin/traveling/user/{id}/"> <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxAPEBAQBxARDhAPDxANDQ8NDQ8ODQ8PFREWFhURFRMYHSggGBolGxUVITEhJSkrLi4uFx8zODcsNygtOisBCgoKBQUFDgUFDisZExkrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK//AABEIAOEA4QMBIgACEQEDEQH/xAAbAAEBAAMBAQEAAAAAAAAAAAAABQEEBgMCB//EADAQAQACAAQDBgUFAQEBAAAAAAABAgMEESEFMVESIjJBYXFCcoGhsWKRwdHhovAz/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AP2sAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYmerRzHEqxtgx2p6/D/oN9iZ6oWLnMS3itMeldoeEz1B0kTHlLLmo9Hrh5q9fBafad4+4OgE7L8TidseNP1Ry+sKFbRMa1nWJ5THIGQAAAAAAAAAAAAAAAAAAAGLWiI1ttEbzLKTxTM6z2Kco8XrPQHlnc5OJOlNq9OvrLUAAAAABsZTNWw523r51/prgOjwsSLRFqTrEvtE4dmexbS3httPpPVbAAAAAAAAAAAAAAAAAAB54+J2K2t0jX6uemdd55zvPur8XtpSI62j9uaOAAAAAAAAAvZHF7eHEzzjuz7wgqnBreOPaQUgAAAAAAAAAAAAAAAAATuM8qe8/hKWOLV1w4mPhtH32RwAAAAAAAAFDg3it8sflPVODU2vPrEApAAAAAAAAAAAAAAAAAA88bD7VZrPnGn1c9aNJmLc42n3dKlcVy2k9unKfF6T1BOAAAAAAAAX8lg9ikRPPxT7ym8Ny3bt2reGs/vPRZAAAAAAAAAAAAAAAAAAAYtETtbeJ5sXvFY1vMRHWXhg52l7dmk7+Wsaa+wJ+dyU03w96/evv6NJ0zRzHDq23w+5P/P7AjjZxcjiV+HWOtd2vasx4omPeNAYGYiZ8MTPtD3w8niW5VmPW20A12zk8pOJPSvnb+m7l+GRG+NPa9I2r/rfiNNo2BjDpFYiKRpEcn018xm6YcxF53nyjeYjrL1wsWto1w5iY9AfYAAAAAAAAAAAAAAMAy0s3n602w+9b7R7tfPZ/XWuBOkcptHn7JwPTGxrXnXEnX8R7Q8wBv5biU12xu9HX4o/tSwcet//AJzE+nn+znmYnoDpRBw87iV5Wmfm3e0cUv5xWfpILAjzxS/lFY+kvK+exJ520+WNAWsTFrWNcSYj3lOzPE/LL7fqnn9ITpmZ3tOs9ZnWWAZmdd53mecyzh3ms64c6T6PkBWynEYttj92evwz/Sg5lu5LPTTu4u9fvX/AWRisxMa13id4mGQAAAAAAAAAAEriOc17mFO3xT19GxxLNdiOzTxW+0dUYAAAAAAAAAAAAAAAAG7w/OdiezieCf8AmeqxDmlThea17mJPyz/AKQAAAAAAAD5xLxWJtblEavpN4vjcqR5963t5AnY2JN7Ta3Oft6PgAAAAAAAAAAAAAAAAAGa2mJia7TE6xLADoctjResWjz5x0nzeqRwnG0tNJ5W3j3hXAAAAAAAc9msTt3tPrt7RyW83fs0tP6Z0952c+AAAAAAAAAAAAAAAAAAAAD6w79mYmPKYl0dbaxEx5xEuaXOG31w49Na/++kg2gAAAAAaXFbaYenW0R/P8Iytxme7X5v4SQAAAAAAAAAAAAAAAAAAAAFXg1trx6xP7x/iUo8GnvX9o/IKoAAAAAJ3GeVPefwlAAAAAAAAAAAAAAAAAAAAAAocG8V/lj8gCsAAAD//2Q==" width="40px" /></a>'.format(
+                    img=CommentBlog.user.avatar, id=CommentBlog.user.id))
+
+        return mark_safe('<a href="/admin/traveling/user/{id}/"> <img src="/static/{img}" width="40px" /></a>'.format(
+            img=CommentBlog.user.avatar, id=CommentBlog.user.id))
+
+    def get_user(self, CommentBlog):
+        return "{first} {last}".format(first=CommentBlog.user.first_name, last=CommentBlog.user.last_name)
+
+    def custom_content_cmt(self, CommentBlog):
+        return '{cmt}'.format(cmt=CommentBlog.content_cmt)
+
+
+class BlogForm(forms.ModelForm):
+    title_blog = forms.CharField(widget=forms.Textarea(attrs={'cols': 750, 'rows': 2}))
+    content_blog = forms.CharField(widget=forms.Textarea(attrs={'cols': 750, 'rows': 25}))
+
+    class Meta:
+        model = Blog
+        fields = '__all__'
+
+
+class BlogAdmin(admin.ModelAdmin):
+    list_display = ['show_image_blog', 'kw_blog', 'title_blog', 'address_blog', 'country_blog', 'count_like_blog',
+                    'user']
+    search_fields = ['kw_blog', 'title_blog', 'address_blog', 'country_blog', 'count_like_blog']
+    list_filter = ['kw_blog', 'address_blog', 'country_blog', 'created_date']
+    inlines = [CommentBlogShowReadInlindAdmin, ]
+    list_per_page = TourPaginator.page_size
+    form = BlogForm
+
+    def show_image_blog(self, Blog):
+        return mark_safe(
+            '<img src="/static/{url}" width="50px" />'.format(url=Blog.image_blog)
+        )
+
+
 ####### ------------ REGISTER:::: SALES_OFF
 class SalesOffAdmin(admin.ModelAdmin):
     list_display = ['name_sales', 'description', 'price_value_sales', 'created_date']
-    search_fields = ['name_sales','price_value_sales']
+    search_fields = ['name_sales', 'price_value_sales']
     list_filter = ['name_sales', 'price_value_sales', 'created_date']
     form = SalesOffForm
 
+
 class TicketInlindAdmin(admin.TabularInline):
+    readonly_fields = ['bill', 'tour', 'type_people', 'user', 'price_real', 'totals_minus_money', 'amount_ticket',
+                       'status_ticket']
     model = Ticket
+    max_num = 1
 
 class ImageInlindAdmin(admin.TabularInline):
     model = TourImages
 
+
 ####### ------------ REGISTER:::: TOUR
 class TourAdmin(admin.ModelAdmin):
     list_display = ['detail', 'name_tour', 'newPrice', 'amount_people_tour', 'remain_people', 'address_tour',
-                  'amount_popular_tour', 'amount_like', 'date_begin_tour', 'user_id']
-    search_fields = ['name_tour','price_tour','amount_like']
-    list_filter = ['name_tour', 'price_tour','amount_like', 'created_date']
+                    'amount_popular_tour', 'amount_like', 'date_begin_tour', 'user_id']
+    search_fields = ['name_tour', 'price_tour', 'amount_like']
+    list_filter = ['name_tour', 'price_tour', 'amount_like', 'created_date']
     form = TourForm
     inlines = [ImageInlindAdmin, TicketInlindAdmin]
     list_per_page = TourPaginator.page_size
@@ -62,23 +131,54 @@ class TourAdmin(admin.ModelAdmin):
     def newPrice(self, Tour):
         return mark_safe('<p>{pr} VND</p>'.format(pr=convert_currency(Tour.price_tour)))
 
+
+class BillTicketInlinđAmin(admin.TabularInline):
+    readonly_fields = ['tour','type_people','user','price_real','totals_minus_money','amount_ticket','status_ticket']
+    model = Ticket
+    max_num = 0
+    extra = 0
+
+class TicketForm(forms.ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ['tour','type_people','user','price_real','totals_minus_money','amount_ticket','status_ticket']
+
+
 class TicketAdmin(admin.ModelAdmin):
     list_display = ['tour', 'type_people', 'user', 'price_real', 'totals_minus_money', 'amount_ticket',
-                  'status_ticket', 'bill']
-    search_fields = ['tour','type_people','user','price_real']
-    list_filter = ['tour', 'type_people','user', 'price_real']
-    # form = TourForm
+                    'status_ticket']
+    search_fields = ['price_real']
+    list_filter = ['tour', 'type_people', 'user', 'price_real']
+    readonly_fields = ['get_bill']
+
+    form = TicketForm
+
+    def get_bill(self, Ticket):
+        return mark_safe('<a href="/admin/traveling/bill/{id}/">{codebill}</a>'.format(id=Ticket.bill.id,
+                                                                                       codebill=Ticket.bill.code_bill))
+
 
 class BillAdmin(admin.ModelAdmin):
     list_display = ['code_bill', 'totals_bill', 'status_bill', 'user', 'method_pay']
-    search_fields = ['code_bill','totals_bill','status_bill','user','method_pay']
-    list_filter = ['totals_bill', 'status_bill','user', 'method_pay']
+    search_fields = ['code_bill', 'totals_bill', 'status_bill', 'user', 'method_pay']
+    list_filter = ['totals_bill', 'status_bill', 'user', 'method_pay']
+    inlines = [BillTicketInlinđAmin]
+
+
+class CommentBlogForm(forms.ModelForm):
+    content_cmt = forms.CharField(widget=forms.Textarea(attrs={'cols': 750, 'rows': 2}))
+
+    class Meta:
+        model = CommentBlog
+        fields = '__all__'
+
 
 class CommentBlogAdmin(admin.ModelAdmin):
     list_display = ['user', 'blog', 'content_cmt', 'amount_like_cmt', 'created_date']
-    search_fields = ['user','blog', 'content_cmt', 'amount_like_cmt','created_date']
-    list_filter = ['user', 'blog', 'content_cmt','amount_like_cmt', 'created_date']
+    search_fields = ['user', 'blog', 'content_cmt', 'amount_like_cmt', 'created_date']
+    list_filter = ['user', 'blog', 'content_cmt', 'amount_like_cmt', 'created_date']
     list_per_page = CommentPaginator.page_size
+    form = CommentBlogForm
 
     def get_user(self, CommentBlog):
         return CommentBlog.first_name
@@ -86,15 +186,14 @@ class CommentBlogAdmin(admin.ModelAdmin):
 
 admin.site.register(SaleOff, SalesOffAdmin)
 admin.site.register(Tour, TourAdmin)
-admin.site.register(TypeCustomer)
+admin.site.register(TypeCustomer, TypeCustomerAdmin)
 admin.site.register(Bill, BillAdmin)
 admin.site.register(Ticket, TicketAdmin)
 admin.site.register(Comment)
 admin.site.register(RatingVote)
 admin.site.register(WishList)
 admin.site.register(TourImages)
-admin.site.register(Blog)
+admin.site.register(Blog, BlogAdmin)
 admin.site.register(CommentBlog, CommentBlogAdmin)
 admin.site.register(LikeBlog)
 admin.site.register(User)
-

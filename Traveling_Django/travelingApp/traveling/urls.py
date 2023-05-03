@@ -15,6 +15,7 @@ r.register('tour-images', views.TourImagesViewSet)
 r.register('blogs', views.BlogViewSet)
 r.register('comments-blog', views.CommentBlogViewSet)
 r.register('likes-blog', views.LikeBlogViewSet)
+r.register('types-customer', views.TypeCustomerViewSet)
 
 urlpatterns = [
     path('', include(r.urls))
