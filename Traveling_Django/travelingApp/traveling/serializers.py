@@ -136,6 +136,7 @@ class TicketDetailsSerializer(TicketSerializer):
 
     def get_bill(self, Ticket):
         return {
+            'id': Ticket.bill.id,
             'code_bill': Ticket.bill.code_bill,
             'totals_bill': Ticket.bill.totals_bill,
             'bill_active': Ticket.bill.active
@@ -165,9 +166,7 @@ class TourImagesSerializer(serializers.ModelSerializer):
     image_tour = serializers.SerializerMethodField()
 
     def get_image_tour(self, TourImages):
-        return {
-            baseUrl + str(TourImages.image_tour)
-        }
+        return baseUrl + str(TourImages.image_tour)
 
     class Meta:
         model = TourImages
@@ -248,9 +247,8 @@ class BlogBaseShow(BlogSerializer):
     image_blog = serializers.SerializerMethodField()
 
     def get_image_blog(self, Blog):
-        return {
-            baseUrl + str(Blog.image_blog)
-        }
+        return baseUrl + str(Blog.image_blog)
+
 
     class Meta:
         model = BlogSerializer.Meta.model
@@ -258,26 +256,19 @@ class BlogBaseShow(BlogSerializer):
 
 
 class BlogDetailsSerializer(BlogBaseShow):
-    image1_blog = serializers.SerializerMethodField()
-    image2_blog = serializers.SerializerMethodField()
+    list_images = serializers.SerializerMethodField()
 
-    def get_image1_blog(self, Blog):
+    def get_list_images(self, Blog):
+        list = []
         if str(Blog.image_content1_blog) != '':
-            return {
-                baseUrl + str(Blog.image_content1_blog)
-            }
-        return {}
-
-    def get_image2_blog(self, Blog):
+            list.append({'image_content_blog': baseUrl + str(Blog.image_content1_blog)})
         if str(Blog.image_content2_blog) != '':
-            return {
-                baseUrl + str(Blog.image_content2_blog)
-            }
-        return {}
+            list.append({'image_content_blog': baseUrl + str(Blog.image_content2_blog)})
+        return list
 
     class Meta:
         model = BlogBaseShow.Meta.model
-        fields = BlogBaseShow.Meta.fields + ['content_blog', 'image1_blog', 'image2_blog', 'user']
+        fields = BlogBaseShow.Meta.fields + ['content_blog', 'list_images', 'user']
 
 
 class CommentBlogSerializer(serializers.ModelSerializer):

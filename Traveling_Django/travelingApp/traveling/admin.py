@@ -174,7 +174,7 @@ class CommentBlogForm(forms.ModelForm):
 
 
 class CommentBlogAdmin(admin.ModelAdmin):
-    list_display = ['user', 'blog', 'content_cmt', 'amount_like_cmt', 'created_date']
+    list_display = ['user', 'get_blogg', 'content_cmt', 'amount_like_cmt', 'created_date']
     search_fields = ['user', 'blog', 'content_cmt', 'amount_like_cmt', 'created_date']
     list_filter = ['user', 'blog', 'content_cmt', 'amount_like_cmt', 'created_date']
     list_per_page = CommentPaginator.page_size
@@ -183,17 +183,108 @@ class CommentBlogAdmin(admin.ModelAdmin):
     def get_user(self, CommentBlog):
         return CommentBlog.first_name
 
+    def get_blogg(self, CommentBlog):
+        return mark_safe('<a href="/admin/traveling/blog/{id}/">{blog}</a>'.format(id=CommentBlog.blog.id,
+                                                                                       blog=CommentBlog.blog.title_blog))
+
+
+class CommentForm(forms.ModelForm):
+    content_cmt = forms.CharField(widget=forms.Textarea(attrs={'cols': 750, 'rows': 2}))
+
+    class Meta:
+        model = Comment
+        fields = '__all__'
+
+
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ['user', 'tour', 'content_cmt', 'amount_like_cmt', 'created_date']
+    search_fields = ['user', 'tour', 'content_cmt', 'amount_like_cmt', 'created_date']
+    list_filter = ['user', 'tour', 'content_cmt', 'amount_like_cmt', 'created_date']
+    list_per_page = CommentPaginator.page_size
+    form = CommentForm
+
+    def get_user(self, Comment):
+        return Comment.first_name
+
+
+class WishListAdmin(admin.ModelAdmin):
+    list_display = ['user', 'get_tour_wish', 'is_like', 'created_date']
+    search_fields = ['user', 'tour', 'is_like', 'created_date']
+    list_filter = ['user', 'tour', 'is_like', 'created_date']
+    list_per_page = CommentPaginator.page_size
+
+    def get_tour_wish(self, WishList):
+        return mark_safe('<a href="/admin/traveling/tour/{id}/">{tour}</a>'.format(id=WishList.tour.id,
+                                                                                   tour=WishList.tour.name_tour))
+
+
+class UserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = '__all__'
+
+class UserAdmin(admin.ModelAdmin):
+    list_display = ['get_username', 'get_staff']
+    list_per_page = TourPaginator.page_size
+    form = UserForm
+    inlines = [TicketInlindAdmin]
+
+    def get_username(self, User):
+        return User.username
+
+    def get_staff(self, User):
+        return User.is_staff
+
+
+class RatingVoteAdmin(admin.ModelAdmin):
+    list_display = ['user', 'get_tour_rate','get_amount_star', ]
+    list_per_page = RatingVotePaginator.page_size
+    form = UserForm
+
+    def get_amount_star(self, RatingVote):
+        data = ''
+        icon = '❤️'
+        for star in range(int(RatingVote.amount_star_voting)):
+            data += icon
+        return data
+
+    def get_tour_rate(self, RatingVote):
+        return mark_safe('<a href="/admin/traveling/tour/{id}/">{tour}</a>'.format(id=RatingVote.tour.id,
+                                                                                   tour=RatingVote.tour.name_tour))
+
+
+class TourImagesAdmin(admin.ModelAdmin):
+    list_display = ['get_tour', 'get_image', 'active']
+    list_per_page = TourPaginator.page_size
+
+    def get_tour(self, TourImages):
+        return mark_safe('<a href="/admin/traveling/tour/{id}/">{tour}</a>'.format(id=TourImages.tour.id,
+                                                                                   tour=TourImages.tour.name_tour))
+    def get_image(self, TourImages):
+        return mark_safe('<img src="/static/{url}" width="50px" height="50px"/>'.format(url=TourImages.image_tour))
+
+
+class LikeBlogAdmin(admin.ModelAdmin):
+    list_display = ['user', 'get_blog_wish', 'is_like', 'created_date']
+    search_fields = ['user', 'blog', 'is_like', 'created_date']
+    list_filter = ['user', 'blog', 'is_like', 'created_date']
+    list_per_page = CommentPaginator.page_size
+
+    def get_blog_wish(self, LikeBlog):
+        return mark_safe('<a href="/admin/traveling/blog/{id}/">{blog}</a>'.format(id=LikeBlog.blog.id,
+                                                                                   blog=LikeBlog.blog.title_blog))
+
 
 admin.site.register(SaleOff, SalesOffAdmin)
 admin.site.register(Tour, TourAdmin)
 admin.site.register(TypeCustomer, TypeCustomerAdmin)
 admin.site.register(Bill, BillAdmin)
 admin.site.register(Ticket, TicketAdmin)
-admin.site.register(Comment)
-admin.site.register(RatingVote)
-admin.site.register(WishList)
-admin.site.register(TourImages)
+admin.site.register(Comment, CommentAdmin)
+admin.site.register(RatingVote, RatingVoteAdmin)
+admin.site.register(WishList, WishListAdmin)
+admin.site.register(TourImages, TourImagesAdmin)
 admin.site.register(Blog, BlogAdmin)
 admin.site.register(CommentBlog, CommentBlogAdmin)
-admin.site.register(LikeBlog)
-admin.site.register(User)
+admin.site.register(LikeBlog, LikeBlogAdmin)
+admin.site.register(User,UserAdmin)

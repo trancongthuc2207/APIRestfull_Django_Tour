@@ -78,7 +78,7 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
     serializer_class = TourBaseShow
     pagination_class = TourPaginator
     parser_classes = [parsers.MultiPartParser, ]
-    queryset = Tour.objects.filter(active=True).order_by('-rating_count_tour')
+    queryset = Tour.objects.filter(active=True, remain_people__gt = 0).order_by('-rating_count_tour')
 
     # PERMISSION
     def get_permissions(self):
@@ -92,16 +92,15 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
         #########
         q = self.request.query_params.get("q")
         if q:
-            queryset = queryset.filter(name_tour__icontains=q)
+            queryset = queryset.filter(name_tour__icontains=q) | queryset.filter(address_tour__icontains=q)
 
         tour_id = self.request.query_params.get('tour_id')
         #########
         if tour_id:
             queryset = queryset.filter(id=tour_id)
-        #########
+        ######### FILTER PRICE
         price_from = self.request.query_params.get('priceF')
         price_to = self.request.query_params.get('priceTo')
-
         if price_from and price_to:
             queryset = queryset.filter(price_tour__gte=(float(price_from)), price_tour__lte=(float(price_to)))
         elif price_from:
@@ -109,10 +108,31 @@ class TourViewSet(viewsets.ViewSet, generics.ListAPIView):
         elif price_to:
             queryset = queryset.filter(price_tour__lte=(float(price_to)))
 
-        ###########
-        name_address = self.request.query_params.get('address')
-        if name_address:
-            queryset = queryset.filter(address_tour__icontains=name_address)
+        ########### FILTER ADDRESS
+        # name_address = self.request.query_params.get('address')
+        # if name_address:
+        #     queryset = queryset.filter(address_tour__icontains=name_address)
+
+        ########### FILTER SORT
+        sort_by = self.request.query_params.get('sort_by')
+        match sort_by:
+            case 'newest':
+                queryset = queryset.order_by('-date_begin_tour')
+            case 'high_price':
+                queryset = queryset.order_by('-price_tour')
+            case 'low_price':
+                queryset = queryset.order_by('price_tour')
+
+        ########### FILTER REMAIN
+        remain = self.request.query_params.get('remain')
+        if remain:
+            queryset = queryset.filter(remain_people__gte=int(remain)).order_by('-remain_people')
+
+        ########### FILTER DATE
+        date_sr = self.request.query_params.get('date')
+        if date_sr:
+            queryset = queryset.filter(date_begin_tour__gte=date_sr)
+
         print(self.request.query_params.get('message'))
         return queryset
 
@@ -514,18 +534,24 @@ class WishListViewSet(viewsets.ViewSet, generics.ListAPIView):
     def add_user_wishlist(self, request, pk):
         try:
             wish = WishList.objects.filter(tour=Tour.objects.get(id=pk),user=request.user)
+            tour = Tour.objects.filter(tour=Tour.objects.get(id=pk))
             if len(wish) > 0:
                 oldwish = WishList.objects.get(tour=Tour.objects.get(id=pk),user=request.user)
                 if oldwish.is_like == 0:
                     oldwish.is_like = 1
+                    tour.amount_like += 1
                 else:
                     oldwish.is_like = 0
+                    tour.amount_like -= 1
                 oldwish.save()
+                tour.save()
                 return Response(WishListSerializer(oldwish).data)
             else:
                 newwish = WishList(tour=Tour.objects.get(id=pk),user=request.user)
                 newwish.is_like = 1
+                tour.amount_like += 1
                 newwish.save()
+                tour.save()
                 return Response(WishListSerializer(newwish).data)
         except:
             return Response("Error Add Wish List")
@@ -624,7 +650,7 @@ class CommentViewSet(viewsets.ViewSet, generics.ListAPIView):
             content = request.data['content_cmt']
             add_comment = Comment(tour=Tour.objects.get(id=pk),user=request.user,content_cmt=content,amount_like_cmt=0,status_cmt="Run")
             add_comment.save()
-            return Response(CommentSerializer(add_comment).data)
+            return Response(CommentShowSerializer(add_comment).data)
         except:
             return Response("Error Comment Comment")
 
@@ -636,7 +662,7 @@ class CommentViewSet(viewsets.ViewSet, generics.ListAPIView):
                 add_comment = Comment(tour=Tour.objects.get(id=pk), user=request.user, content_cmt=content,
                                       amount_like_cmt=0, status_cmt="Run")
                 add_comment.save()
-            return Response(CommentSerializer(add_comment).data)
+            return Response(CommentShowSerializer(add_comment).data)
         except:
             return Response("Error Comment Comment")
 
@@ -659,7 +685,7 @@ class CommentViewSet(viewsets.ViewSet, generics.ListAPIView):
                 return Response("You cant have permission!!!")
             cmt.content_cmt = request.data['content_cmt']
             cmt.save()
-            data = CommentSerializer(cmt).data
+            data = CommentShowSerializer(cmt).data
             data["status_update"] = "Update Successfully!!!"
             return Response(data)
         except:
@@ -864,7 +890,7 @@ class CommentBlogViewSet(viewsets.ViewSet, generics.ListAPIView):
             content = request.data['content_cmt']
             add_comment = CommentBlog(blog=Blog.objects.get(id=pk),user=request.user,content_cmt=content,amount_like_cmt=0,status_cmt="Run")
             add_comment.save()
-            return Response(CommentBlogSerializer(add_comment).data)
+            return Response(CommentBlogShowSerializer(add_comment).data)
         except:
             return Response("Error Comment Comment")
 
@@ -875,7 +901,7 @@ class CommentBlogViewSet(viewsets.ViewSet, generics.ListAPIView):
                 content = request.data['content_cmt'] + str(i) + " !!!!"
                 add_comment = CommentBlog(blog=Blog.objects.get(id=pk),user=request.user,content_cmt=content,amount_like_cmt=0,status_cmt="Run")
                 add_comment.save()
-            return Response(CommentBlogSerializer(add_comment).data)
+            return Response(CommentBlogShowSerializer(add_comment).data)
         except:
             return Response("Error Comment Comment")
 
@@ -898,7 +924,7 @@ class CommentBlogViewSet(viewsets.ViewSet, generics.ListAPIView):
                 return Response("You cant have permission!!!")
             cmt.content_cmt = request.data['content_cmt']
             cmt.save()
-            data = CommentBlogSerializer(cmt).data
+            data = CommentBlogShowSerializer(cmt).data
             data["status_update"] = "Update Successfully!!!"
             return Response(data)
         except:
