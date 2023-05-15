@@ -5,9 +5,11 @@ from ckeditor.fields import RichTextField
 
 class User(AbstractUser):
     avatar = models.ImageField(upload_to='user/%Y/%m', null=True)
-    phone_number = models.CharField(max_length=12, null=True)
-    citizen_id = models.CharField(max_length=12, null=True)
-
+    phone_number = models.CharField(max_length=12, null=True, default="")
+    citizen_id = models.CharField(max_length=12, null=True, default="")
+    date_of_birth = models.DateTimeField(null=True)
+    gender = models.CharField(max_length=50, null=True, default="")
+    address = models.CharField(max_length=255, null=True, default="")
 
 class BaseModel(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)

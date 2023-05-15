@@ -3,7 +3,7 @@ from .serializers import *
 
 #Check tour exist: (Tour & type_ticket)
 def check_can_book_ticket(id_user, id_tour, type_people):
-    queryset = Ticket.objects.filter(tour=id_tour,user=id_user,active=True)
+    queryset = Ticket.objects.filter(tour=id_tour,user=id_user,active=True, status_ticket='Pending')
     list = TicketDetailsSerializer(queryset,many=True).data
     for ticket in list:
         if ticket['type_people']['name_type_customer'] == type_people.name_type_customer:
@@ -19,5 +19,11 @@ def check_can_cmt_rate_tour(id_user, id_tour):
 
 def check_amount_to_book(amount_book, amount_remain_tour):
     if amount_book > amount_remain_tour:
+        return False
+    return True
+
+def check_can_book_more_ticket(id_user):
+    queryset = Ticket.objects.filter(user=id_user,active=True, status_ticket='Pending')
+    if len(queryset) >= 10:
         return False
     return True

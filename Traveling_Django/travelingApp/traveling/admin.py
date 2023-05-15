@@ -150,7 +150,7 @@ class TicketAdmin(admin.ModelAdmin):
     search_fields = ['price_real']
     list_filter = ['tour', 'type_people', 'user', 'price_real']
     readonly_fields = ['get_bill']
-
+    list_per_page = TicketPaginator.page_size
     form = TicketForm
 
     def get_bill(self, Ticket):

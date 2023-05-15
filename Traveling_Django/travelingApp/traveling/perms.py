@@ -9,6 +9,13 @@ class CanGetUser(permissions.IsAuthenticated):
         return False
 
 
+class CanUpdateUser(permissions.IsAuthenticated):
+    def has_permission(self, request, user):
+        if request.user.is_superuser or request.user.is_staff or request.user:
+            return True
+        return False
+
+
 class TicketOwnerUser(permissions.IsAuthenticated):
     def has_permission(self, request, ticket):
         if request.user == ticket.user or request.user.is_superuser or request.user.is_staff:

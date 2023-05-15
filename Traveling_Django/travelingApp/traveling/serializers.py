@@ -55,7 +55,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'username', 'password', 'email', 'avatar', 'phone_number', 'citizen_id', 'is_staff']
+        fields = ['id', 'first_name', 'last_name', 'username', 'password', 'email', 'avatar', 'phone_number',
+                  'citizen_id', 'date_of_birth', 'gender', 'address', 'is_staff']
         extra_kwargs = {
             'password': {'write_only': True}
         }
@@ -84,13 +85,15 @@ class TypeCustomerBaseShow(serializers.ModelSerializer):
 
         if TypeCustomer.sales_off.price_percent_sales != 0:
             data['price_percent_sales'] = str(TypeCustomer.sales_off.price_percent_sales)
-            data['the_last_price'] = str(TypeCustomer.price_booked - (TypeCustomer.price_booked * TypeCustomer.sales_off.price_percent_sales)/100)
+            data['the_last_price'] = str(TypeCustomer.price_booked - (
+                        TypeCustomer.price_booked * TypeCustomer.sales_off.price_percent_sales) / 100)
 
         return data
 
     class Meta:
         model = TypeCustomer
-        fields = ['id', 'name_type_customer', 'description_customer', 'price_booked', 'sales_off', 'active', 'created_date']
+        fields = ['id', 'name_type_customer', 'description_customer', 'price_booked', 'sales_off', 'active',
+                  'created_date']
 
 
 class BillSerializer(serializers.ModelSerializer):
@@ -104,6 +107,18 @@ class BillSerializer(serializers.ModelSerializer):
         model = Bill
         fields = ['id', 'code_bill', 'totals_bill', 'status_bill', 'active', 'created_date', 'ticket_of_bill']
 
+class BillShowStaffSerializer(BillSerializer):
+    user = serializers.SerializerMethodField()
+
+    def get_user(self, Bill):
+        return {
+            "name_customer": Bill.user.first_name + ' ' + Bill.user.last_name,
+            "phone_customer": Bill.user.phone_number,
+        }
+
+    class Meta:
+        model = BillSerializer.Meta.model
+        fields = BillSerializer.Meta.fields + ['user']
 
 class TicketSerializer(serializers.ModelSerializer):
     tour = serializers.SerializerMethodField()
@@ -114,6 +129,9 @@ class TicketSerializer(serializers.ModelSerializer):
             'id': Ticket.tour.id,
             'name_tour': Ticket.tour.name_tour,
             'image_tour': baseUrl + str(Ticket.tour.image_tour),
+            'address_tour': Ticket.tour.address_tour,
+            'country_tour': Ticket.tour.country_tour,
+            'date_begin_tour': Ticket.tour.date_begin_tour,
         }
 
     def get_name_ticket(self, Ticket):
@@ -126,7 +144,7 @@ class TicketSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ticket
-        fields = ['name_ticket', 'tour', 'active', 'created_date']
+        fields = ['name_ticket', 'tour', 'active', 'status_ticket', 'created_date']
 
 
 class TicketDetailsSerializer(TicketSerializer):
@@ -154,6 +172,9 @@ class TicketDetailsSerializer(TicketSerializer):
             'name_tour': Ticket.tour.name_tour,
             'image_tour': baseUrl + str(Ticket.tour.image_tour),
             'price_tour': Ticket.tour.price_tour,
+            'address_tour': Ticket.tour.address_tour,
+            'country_tour': Ticket.tour.country_tour,
+            'date_begin_tour': Ticket.tour.date_begin_tour,
         }
 
     class Meta:
@@ -182,6 +203,8 @@ class WishListSerializer(serializers.ModelSerializer):
             'name_tour': WishList.tour.name_tour,
             'image_tour': baseUrl + str(WishList.tour.image_tour),
             'price_tour': WishList.tour.price_tour,
+            'date_begin_tour': WishList.tour.date_begin_tour,
+            'remain_people': WishList.tour.remain_people
         }
 
     class Meta:
@@ -213,6 +236,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class CommentShowSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
 
     def get_user(self, Comment):
         return {
@@ -222,9 +246,18 @@ class CommentShowSerializer(serializers.ModelSerializer):
             "avatar": baseUrl + str(Comment.user.avatar)
         }
 
+    def get_rating(self, Comment):
+        star = 'None'
+        try:
+            rate = RatingVote.objects.get(user=Comment.user, tour=Comment.tour)
+            star = rate.amount_star_voting
+        except:
+            return star
+        return star
+
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'content_cmt', 'amount_like_cmt', 'status_cmt', 'created_date']
+        fields = ['id', 'user', 'rating', 'content_cmt', 'amount_like_cmt', 'status_cmt', 'created_date']
 
 
 class ImageSerializer(serializers.ModelSerializer):
@@ -237,10 +270,10 @@ class ImageSerializer(serializers.ModelSerializer):
 
 
 class BlogSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Blog
-        fields = ['id', 'kw_blog', 'title_blog', 'content_blog', 'image_blog', 'image_content1_blog', 'image_content2_blog', 'count_like_blog', 'user', 'created_date']
+        fields = ['id', 'kw_blog', 'title_blog', 'content_blog', 'image_blog', 'image_content1_blog',
+                  'image_content2_blog', 'count_like_blog', 'user', 'created_date']
 
 
 class BlogBaseShow(BlogSerializer):
@@ -249,10 +282,10 @@ class BlogBaseShow(BlogSerializer):
     def get_image_blog(self, Blog):
         return baseUrl + str(Blog.image_blog)
 
-
     class Meta:
         model = BlogSerializer.Meta.model
-        fields = ['id', 'kw_blog', 'title_blog', 'image_blog', 'address_blog', 'country_blog', 'count_like_blog', 'created_date']
+        fields = ['id', 'kw_blog', 'title_blog', 'image_blog', 'address_blog', 'country_blog', 'count_like_blog',
+                  'created_date']
 
 
 class BlogDetailsSerializer(BlogBaseShow):
